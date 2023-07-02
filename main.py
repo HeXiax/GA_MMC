@@ -33,14 +33,6 @@ def train_IDMMC(model, feats, modalitys, labels):
 
     optimizer = optim.Adam(model.parameters(), lr=opt.args.lr_m)
 
-    acc_reuslt = []
-    nmi_result = []
-    ari_result = []
-    f1_result = []
-    p_result = []
-    r_result = []
-    purity_result = []
-    lossdata = []
 
     for epoch in range(opt.args.n_epochs):
         h_img_all, h_txt_all, h_fuse, h2_img_feat, h2_txt_feat = model(feats, modalitys, opt.args.k1, opt.args.k2, opt.args.k3)
@@ -56,29 +48,25 @@ def train_IDMMC(model, feats, modalitys, labels):
         recon_loss = img_recon_loss + txt_recon_loss + \
                      (img_cycle_loss + txt_cycle_loss) * opt.args.lamda1 + \
                      (img_cycle_recon_loss + txt_cycle_recon_loss)
-        #img_txt = torch.mm(F.normalize(h2_img_feat, dim=1), F.normalize(h2_txt_feat, dim=1).t())
+        
         img_txt = torch.mm(h2_img_feat, h2_txt_feat.transpose(0,1))
         con_loss = torch.diagonal(img_txt).add(-1).pow(2).mean() + off_diagonal(img_txt).pow(2).mean()
 
         loss = recon_loss + opt.args.lamda2 * con_loss
-        #loss = recon_loss
+        
 
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         print('{} loss: {}'.format(epoch, loss))
-        l1 = loss
-        lossdata.append([epoch, l1.cpu().data.numpy()])
+        
 
         kmeans = KMeans(config['n_clusters'], max_iter=1000,
                         tol=5e-5, n_init=20).fit(h_fuse.data.cpu().numpy()) 
         train_metrics = calculate_metrics(labels, kmeans.labels_)
         print('>Train', METRIC_PRINT.format(*train_metrics))
-    lossdata = np.array(lossdata)
-    plt.figure(figsize=(10, 5))
-    plt.plot(lossdata[:, 0], lossdata[:, 1], color='red', linewidth='1', label='img_0.1')
-    plt.show()
+    
 
 
 
