@@ -7,6 +7,39 @@ from torch.nn.parameter import Parameter
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
+
+class DeepAE(nn.Module):
+    """DeepAE: FC AutoEncoder"""
+
+    def __init__(self, input_dim=1, hiddens=[1], batchnorm=False):
+        super(DeepAE, self).__init__()
+        self.depth = len(hiddens)
+        self.channels = [input_dim] + hiddens  # [5, 3, 3]
+
+        encoder_layers = []
+        for i in range(self.depth):
+            encoder_layers.append(
+                nn.Linear(self.channels[i], self.channels[i + 1]))
+            if i < self.depth - 1:
+                encoder_layers.append(nn.LeakyReLU(0.2, inplace=True))
+                if batchnorm:
+                    encoder_layers.append(nn.BatchNorm1d(self.channels[i + 1]))
+        self.encoder = nn.Sequential(*encoder_layers)
+        decoder_layers = []
+        for i in range(self.depth, 0, -1):
+            decoder_layers.append(
+                nn.Linear(self.channels[i], self.channels[i - 1]))
+            #decoder_layers.append(nn.LeakyReLU(0.2, inplace=True))
+            if i > 1 and batchnorm:
+                decoder_layers.append(nn.LeakyReLU(0.2, inplace=True))
+                decoder_layers.append(nn.BatchNorm1d(self.channels[i - 1]))
+        self.decoder = nn.Sequential(*decoder_layers)
+
+    def forward(self, x):
+        latent = self.encoder(x)
+        output = self.decoder(latent)
+        return output, latent
+
 class AttentionLayer(nn.Module):
     def __init__(self, in_dim, hidden_dim, Cross=False):
         super(AttentionLayer, self).__init__()
@@ -20,10 +53,6 @@ class AttentionLayer(nn.Module):
 
 
     def forward(self, feat_x, feat_y, k):
-        # feat_x = F.normalize(feat_x, p=1, dim=1)
-        # feat_y = F.normalize(feat_y, p=1, dim=1)
-        # feat_x = torch.mm(feat_x, self.W1)
-        # feat_y = torch.mm(feat_y, self.W1)
 
         assert feat_x.shape[1] == feat_y.shape[1]
         #e = torch.mm(torch.mm(feat_x, self.W), feat_y.transpose(0,1))
@@ -33,23 +62,11 @@ class AttentionLayer(nn.Module):
         e = torch.div(torch.mm(torch.mm(feat_x, self.W1), feat_y.t()), torch.mm(norm1, norm2.t()) + 1e-7)
 
         A = -9e15 * torch.ones_like(e).cuda()
-        #A = torch.zeros_like(e).cuda()
-
-
-        # for i in range(e.shape[0]):
-        #     _, ind = torch.topk(e[i,:], k)
-        #     b = e[i, ind]
-        #     A[i, ind] = e[i, ind]
+        
         a, ind = torch.topk(e, k)
         A.scatter_(1, ind, a)
 
         attention = F.softmax(A, dim=1)
-        # rowsum = torch.sum(A, dim=1) ** (-1)
-        # rowsum[torch.isinf(rowsum)] = 0.
-        # D = torch.diag(rowsum)
-        # attention = torch.mm(D, A)
-
-        # out = torch.mm(attention, feat_y)
         return attention
 
 class Multi_head_attention(nn.Module):
@@ -81,13 +98,10 @@ class KNN_Att(nn.Module):
         cos = torch.div(torch.mm(X, Y.t()), torch.mm(norm1, norm2.t()) + 1e-7)
         cos1 = cos.transpose(0, 1)
         A = -9e15 * torch.ones_like(cos).cuda()
-        #A = torch.zeros_like(cos).cuda()
-
-
+    
         a, ind = torch.topk(cos, k)
         A.scatter_(1, ind, a)
 
-        #B = torch.zeros_like(cos1).cuda()
         B = -9e15 * torch.ones_like(cos1).cuda()
         b, ind1 = torch.topk(cos1, k)
         B.scatter_(1, ind1, b)
