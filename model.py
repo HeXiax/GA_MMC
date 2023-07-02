@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
-from pre_train import DeepAE
-from built_graph1 import AttentionLayer,GNNLayer
-from built_graph1 import built_cos_knn
-from built_graph1 import KNN_Att
-from built_graph1 import Multi_head_attention
+from built_graph import DeepAE
+from built_graph import AttentionLayer,GNNLayer
+from built_graph import built_cos_knn
+from built_graph import KNN_Att
+from built_graph import Multi_head_attention
 
 
 
@@ -43,8 +43,6 @@ class IDMMC(nn.Module):
                               batchnorm=config['batchnorm'])
         self.txt2img.load_state_dict(dicts['G21_state_dict'])
 
-        # self.img_att = AttentionLayer(self.latent_dim, self.latent_dim)
-        # self.txt_att = AttentionLayer(self.latent_dim, self.latent_dim)
 
         self.img_att = Multi_head_attention(self.latent_dim, self.latent_dim)
         self.txt_att = Multi_head_attention(self.latent_dim, self.latent_dim)
@@ -55,15 +53,6 @@ class IDMMC(nn.Module):
 
         self.Cross_att1 = AttentionLayer(self.latent_dim, self.latent_dim, Cross=True)
         self.Cross_att2 = AttentionLayer(self.latent_dim, self.latent_dim, Cross=True)
-
-        self.gconv = GNNLayer(self.latent_dim, self.latent_dim)
-
-        self.img_gnn = GNNLayer(self.latent_dim, self.latent_dim)
-        self.txt_gnn = GNNLayer(self.latent_dim, self.latent_dim)
-
-        self.fc1 = nn.Linear(self.latent_dim * 2, self.latent_dim)
-        self.fc2 = nn.Linear(self.latent_dim, self.latent_dim)
-
 
 
     def forward(self, feats, modalitys, k1, k2, k3):
@@ -87,11 +76,9 @@ class IDMMC(nn.Module):
         txt_feats_recon = self.txtAE.decoder(txt_latent_recon)
 
         c_fea_img[img_idx] = imgs_latent
-        #c_fea_img[txt_idx] = txt2img_recon
 
         c_fea_txt[txt_idx] = txts_latent
-        #c_fea_txt[img_idx] = img2txt_recon
-
+    
         #intra_modal complete
         txt_img_adj = self.img_att(txt2img_recon, imgs_latent, k1)
         g_fea_img = torch.mm(txt_img_adj, imgs_latent)
@@ -108,8 +95,7 @@ class IDMMC(nn.Module):
 
         txt_adj = built_cos_knn(c_fea_txt, k2)
         c_fea_txt = torch.mm(txt_adj, c_fea_txt)
-        # #
-        # #
+       
         #inter_modal complete
         S1, S2 = self.img_att1(c_fea_img, c_fea_txt, k3)
         c_txt2img_fea = torch.mm(S1, c_fea_txt)
@@ -120,31 +106,6 @@ class IDMMC(nn.Module):
         h_txt_feat = c_fea_txt + c_img2txt_fea
 
 
-
-        # # intra_modal complete 2
-        # img_adj1 = built_cos_knn(h_img_feat, k2)
-        # h_img_feat = torch.mm(img_adj1, h_img_feat)
-        #
-        # txt_adj1 = built_cos_knn(h_txt_feat, k2)
-        # h_txt_feat = torch.mm(txt_adj1, h_txt_feat)
-
-
-        # #inter_modal complete 2
-        # S1, S2 = self.txt_att1(h_img_feat, h_txt_feat, k3)
-        # c_txt2img_fea1 = torch.mm(S1, h_txt_feat)
-        # h_img_feat = h_img_feat + c_txt2img_fea1
-        #
-        # c_img2txt_fea1 = torch.mm(S2, h_img_feat)
-        # h_txt_feat = h_txt_feat + c_img2txt_fea1
-
-        #h_fuse = torch.cat((h_img_feat, h_txt_feat), dim=1)
-        # h1 = F.relu(self.fc1(h))
-        # h_fuse = self.fc2(h1)
-
-
-        #h_fuse = h_img_feat + h_txt_feat
-        #h_fuse = c_fea_img + c_fea_txt
-        #h_fuse = torch.cat((c_fea_img, c_fea_txt), dim=1)
         h_fuse = torch.cat((h_img_feat, h_txt_feat), dim=1)
 
         h_img_all = [img_feats, imgs_recon, imgs_latent, img_latent_recon, img_feats_recon]
