@@ -12,7 +12,6 @@ from utils import calculate_metrics, check_dir_exist
 from torch.utils.data import DataLoader
 import time
 import numpy as np
-import wandb
 
 use_cuda = torch.cuda.is_available()
 device = torch.device('cuda:0' if use_cuda else 'cpu')
@@ -73,7 +72,7 @@ def train_IDMMC(model, feats, modalitys, labels):
         lossdata.append([epoch, l1.cpu().data.numpy()])
 
         kmeans = KMeans(config['n_clusters'], max_iter=1000,
-                        tol=5e-5, n_init=20).fit(h_fuse.data.cpu().numpy())  # fit()拟合模型，根据训练数据来拟合模型, train_embedding 训练数据
+                        tol=5e-5, n_init=20).fit(h_fuse.data.cpu().numpy()) 
         train_metrics = calculate_metrics(labels, kmeans.labels_)
         print('>Train', METRIC_PRINT.format(*train_metrics))
     lossdata = np.array(lossdata)
@@ -81,23 +80,6 @@ def train_IDMMC(model, feats, modalitys, labels):
     plt.plot(lossdata[:, 0], lossdata[:, 1], color='red', linewidth='1', label='img_0.1')
     plt.show()
 
-        # acc, ar, nmi, f, p, r, purity = calculate_metrics(labels, kmeans.labels_)
-        # acc_reuslt.append(acc)
-        # nmi_result.append(nmi)
-        # ari_result.append(ar)
-        # f1_result.append(f)
-        # p_result.append(p)
-        # r_result.append(r)
-        # purity_result.append(purity)
-        #
-        # print("ACC: {:.4f}".format(max(acc_reuslt)))
-        # print("NMI: {:.4f}".format(nmi_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("ARI: {:.4f}".format(ari_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("F1: {:.4f}".format(f1_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("P: {:.4f}".format(p_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("R: {:.4f}".format(r_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("purity: {:.4f}".format(purity_result[np.where(acc_reuslt == np.max(acc_reuslt))[0][0]]))
-        # print("Epoch:", np.where(acc_reuslt == np.max(acc_reuslt))[0][0])
 
 
 
@@ -132,10 +114,6 @@ if __name__ == '__main__':
     torch.manual_seed(opt.args.seed)
     torch.cuda.manual_seed(opt.args.seed)
 
-    os.environ["WANDB_API_KEY"] = '95d9b6bc9903630c7f3d7eda27a18fdc7347f4a5'
-    os.environ["WANDB_MODE"] = "offline"
-
-    wandb.init(project='IDMMC', notes='loss', config=opt.args)
 
     model = IDMMC(opt.args, config, opt.args.dm2c_cptpath)
     print(model)
