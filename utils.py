@@ -16,7 +16,7 @@ from sklearn.decomposition import PCA
 from sklearn import metrics
 from sklearn.metrics.cluster._supervised import contingency_matrix
 from munkres import Munkres
-import wandb
+
 
 
 class MFeatDataSet(Dataset):
@@ -114,7 +114,6 @@ def calculate_metrics(y, y_pred):
     nmi = get_nmi(y, y_pred)
     f, p, r = get_fpr(y, y_pred)
     purity = get_purity(y, y_pred)
-    wandb.log({'Accuracy': acc, 'MNI': nmi, 'F': f, 'purity': purity})
     return acc, ar, nmi, f, p, r, purity
 
 
