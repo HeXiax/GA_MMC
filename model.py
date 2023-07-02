@@ -89,14 +89,14 @@ class IDMMC(nn.Module):
         c_fea_txt[img_idx] = g_fea_txt
 
 
-        # intra_modal message propogate
+        # intra_modal 
         img_adj = built_cos_knn(c_fea_img, k2)
         c_fea_img = torch.mm(img_adj, c_fea_img)
 
         txt_adj = built_cos_knn(c_fea_txt, k2)
         c_fea_txt = torch.mm(txt_adj, c_fea_txt)
        
-        #inter_modal complete
+        #inter_modal 
         S1, S2 = self.img_att1(c_fea_img, c_fea_txt, k3)
         c_txt2img_fea = torch.mm(S1, c_fea_txt)
         h_img_feat = c_fea_img + c_txt2img_fea
